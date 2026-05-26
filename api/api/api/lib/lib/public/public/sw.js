@@ -94,7 +94,6 @@ function App(){
   return(
     <div style={{minHeight:"100vh",background:"#060610",color:"#e2e8f0",fontFamily:"'Courier New',monospace"}}>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-
       <div style={{background:"linear-gradient(180deg,#0d0d22,#060610)",borderBottom:"1px solid #1e293b",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
           <div style={{fontSize:"30px"}}>🔭</div>
@@ -117,20 +116,16 @@ function App(){
           </div>
         </div>
       </div>
-
       <div style={{height:"5px",background:"#0f172a",position:"relative"}}>
         <div style={{height:"100%",width:`${Math.min(100,(pz/4.5)*100)}%`,background:`linear-gradient(90deg,#4ade80,${as.c})`,transition:"width 1s ease"}}/>
         {[1,2,3].map(t=><div key={t} style={{position:"absolute",inset:0,left:`${(t/4.5)*100}%`,width:"1px",background:"#1e293b"}}/>)}
       </div>
-
       <div style={{padding:"22px 24px",maxWidth:"1400px",margin:"0 auto"}}>
-
         <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 14px",background:"#0a0a14",border:"1px solid #1e293b",borderRadius:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
           {loading?<><Spin sz={12} c="#4ade80"/><span style={{fontSize:"10px",color:"#475569",fontFamily:"monospace"}}>Collecting live data...</span></>
           :data?<><div style={{width:8,height:8,borderRadius:"50%",background:"#4ade80",flexShrink:0}}/><span style={{fontSize:"10px",color:"#475569",fontFamily:"monospace",flex:1}}>Last collected: {ago===0?"just now":`${ago} min ago`} · Auto-refreshes every 30 min</span></>
           :<><div style={{width:8,height:8,borderRadius:"50%",background:"#facc15",flexShrink:0}}/><span style={{fontSize:"10px",color:"#facc15",fontFamily:"monospace"}}>Waiting for first collection — auto-starts within 30 min of deploy</span></>}
         </div>
-
         <div style={{background:"#0a0a14",border:"1px solid #1e293b",borderRadius:"8px",padding:"16px",marginBottom:"16px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px",flexWrap:"wrap",gap:"8px"}}>
             <div style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"18px"}}>📊</span><div><div style={{fontSize:"8px",color:"#1e3a4a",letterSpacing:"0.25em"}}>ANALYSIS QUALITY</div><div style={{fontSize:"13px",fontWeight:700,color:"#94a3b8"}}>Signal Coverage</div></div></div>
@@ -143,7 +138,6 @@ function App(){
             {cpct<30?"⚠ Low — toggle qualitative signals for better coverage.":cpct<60?"◆ Moderate — analysis useful but limited.":cpct<80?"● Good — analysis is reasonably reliable.":"✓ High — analysis carries strong analytical weight."}
           </div>
         </div>
-
         {data?.alerts&&data.alerts.length>0&&(
           <div style={{background:"#1c0a00",border:"1px solid #fb923c44",borderRadius:"8px",padding:"14px 18px",marginBottom:"16px"}}>
             <div style={{fontSize:"9px",color:"#fb923c",letterSpacing:"0.2em",marginBottom:"8px"}}>⚠ ELEVATED SIGNALS — RECOMMEND RUNNING ANALYSIS</div>
@@ -155,13 +149,11 @@ function App(){
             ))}
           </div>
         )}
-
         <div style={{fontSize:"8px",color:"#1e3a4a",letterSpacing:"0.3em",marginBottom:"10px"}}>── AUTO-COLLECTED SIGNALS · fully autonomous · no input required</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:"14px",marginBottom:"26px"}}>
           {Object.keys(WEIGHTS).map(id=><Card key={id} id={id} data={scores[id]} loading={loading&&!scores[id]}/>)}
         </div>
-
-        <div style={{fontSize:"8px",color:"#1e3a4a",letterSpacing:"0.3em",marginBottom:"10px"}}>── QUALITATIVE SIGNALS · toggle when observed · Google Alerts monitors these · 5% each</div>
+        <div style={{fontSize:"8px",color:"#1e3a4a",letterSpacing:"0.3em",marginBottom:"10px"}}>── QUALITATIVE SIGNALS · toggle when observed · 5% each</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:"10px",marginBottom:"26px"}}>
           {QUAL.map(q=>{const on=!!qual[q.id];return(
             <div key={q.id} onClick={()=>setQual(p=>({...p,[q.id]:!on}))} style={{display:"flex",alignItems:"center",gap:"12px",padding:"14px 16px",borderRadius:"8px",cursor:"pointer",background:on?"#0a1a0a":"#0a0a14",border:`1px solid ${on?"#4ade8044":"#1e293b"}`,transition:"all 0.2s",boxShadow:on?"0 0 16px -4px #4ade8033":"none"}}>
@@ -174,7 +166,6 @@ function App(){
             </div>
           );})}
         </div>
-
         <div style={{background:"#0a0a14",border:"1px solid #1e293b",borderRadius:"8px",padding:"20px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"10px"}}>
             <div style={{display:"flex",gap:"10px",alignItems:"center"}}>
@@ -189,10 +180,9 @@ function App(){
             </div>
           </div>
           {!Object.keys(scores).length&&<div style={{fontSize:"11px",color:"#1e3a4a",fontFamily:"monospace",padding:"10px",background:"#0f0f1a",borderRadius:"4px"}}>Waiting for first data collection run...</div>}
-          {analyzing&&<div style={{display:"flex",gap:"6px",alignItems:"center",padding:"10px 0"}}>{[0,1,2,3].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"#6366f1",animation:`dot 0.9s ease ${i*0.18}s infinite alternate`}}/>)}<span style={{color:"#334155",fontFamily:"monospace",fontSize:"11px",marginLeft:"10px"}}>Processing signal constellation...</span></div>}
+          {analyzing&&<div style={{display:"flex",gap:"6px",alignItems:"center",padding:"10px 0"}}>{[0,1,2,3].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"#6366f1",animation:`dot 0.9s ease ${i*0.18}s infinite alternate`}}/>)}<span style={{color:"#334155",fontFamily:"monospace",fontSize:"11px",marginLeft:"10px"}}>Processing...</span></div>}
           {analysis&&<div style={{borderTop:"1px solid #1e293b",paddingTop:"16px",color:"#cbd5e1",fontFamily:"monospace",fontSize:"12px",lineHeight:2.0,whiteSpace:"pre-wrap"}}>{analysis}</div>}
         </div>
-
         <div style={{marginTop:"28px",paddingTop:"16px",borderTop:"1px solid #0f172a",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
           <span style={{fontSize:"9px",color:"#1e293b",letterSpacing:"0.15em"}}>DC SENTINEL AUTONOMOUS · ALL SOURCES PUBLICLY AVAILABLE</span>
           <div style={{display:"flex",gap:"16px"}}>
