@@ -1,9 +1,8 @@
 {
-  "name": "dc-sentinel",
-  "version": "1.0.0",
-  "description": "DC Sentinel - Autonomous OSINT Early Warning System",
-  "dependencies": {
-    "@upstash/redis": "^1.28.0",
-    "web-push": "^3.6.7"
-  }
+  "crons": [
+    {
+      "path": "/api/collect",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }
