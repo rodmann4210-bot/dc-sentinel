@@ -1,5 +1,6 @@
-const { getRedis, fetchAircraft, fetchFederalRegister, fetchTFRs, fetchHotelRate, fetchCarRental, scoreSignals } = require("./signals");
+const { getRedis, fetchAircraft, fetchFederalRegister, scoreSignals } = require("./signals");
 const redis = getRedis();
+
 module.exports = async function handler(req, res) {
   const isVercelCron = req.headers["x-vercel-cron"] === "1";
   const hasSecret = req.query.token === process.env.CRON_SECRET;
@@ -8,28 +9,21 @@ module.exports = async function handler(req, res) {
   const timestamp = new Date().toISOString();
   const readings = {}, errors = {}, fetched = [];
 
-  const [aircraft, fedReg, tfrs, hotel, car] = await Promise.allSettled([
+  const [aircraft, fedReg] = await Promise.allSettled([
     fetchAircraft(process.env.OPENSKY_USER, process.env.OPENSKY_PASS),
     fetchFederalRegister(),
-    fetchTFRs(process.env.ANTHROPIC_API_KEY),
-    fetchHotelRate(process.env.ANTHROPIC_API_KEY),
-    fetchCarRental(process.env.ANTHROPIC_API_KEY),
   ]);
 
-  if (aircraft.status === "fulfilled" && aircraft.value.success) { readings.air_total = aircraft.value.total; readings.air_mil = aircraft.value.military; fetched.push("opensky"); }
-  else errors.opensky = aircraft.value?.error || "failed";
+  if (aircraft.status === "fulfilled" && aircraft.value.success) {
+    readings.air_total = aircraft.value.total;
+    readings.air_mil = aircraft.value.military;
+    fetched.push("opensky");
+  } else errors.opensky = aircraft.value?.error || "failed";
 
-  if (fedReg.status === "fulfilled" && fedReg.value.success) { readings.fed_reg = fedReg.value.count; fetched.push("fed_reg"); }
-  else errors.fed_reg = fedReg.value?.error || "failed";
-
-  if (tfrs.status === "fulfilled" && tfrs.value.success) { readings.tfr_count = tfrs.value.count; fetched.push("tfrs"); }
-  else errors.tfrs = tfrs.value?.error || "failed";
-
-  if (hotel.status === "fulfilled" && hotel.value.success && hotel.value.rate != null) { readings.hotel_rate = hotel.value.rate; fetched.push("hotel"); }
-  else errors.hotel = hotel.value?.error || "not found";
-
-  if (car.status === "fulfilled" && car.value.success && car.value.rate != null) { readings.car_rental = car.value.rate; fetched.push("car"); }
-  else errors.car = car.value?.error || "not found";
+  if (fedReg.status === "fulfilled" && fedReg.value.success) {
+    readings.fed_reg = fedReg.value.count;
+    fetched.push("fed_reg");
+  } else errors.fed_reg = fedReg.value?.error || "failed";
 
   const { scores, alerts, peakZ, coveragePct, levelLabel } = scoreSignals(readings);
   const result = { timestamp, readings, scores, alerts, peakZ, coveragePct, levelLabel, fetched, errors };
