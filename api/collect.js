@@ -1,5 +1,5 @@
 const redis = require("./lib/redis");
-const { fetchAircraft, fetchFederalRegister, fetchTFRs, fetchHotelRate, fetchCarRental, scoreSignals } = require("../lib/signals");
+const { fetchAircraft, fetchFederalRegister, fetchTFRs, fetchHotelRate, fetchCarRental, scoreSignals } = require("./lib/signals");
 
 module.exports = async function handler(req, res) {
   const isVercelCron = req.headers["x-vercel-cron"] === "1";
