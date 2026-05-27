@@ -1,4 +1,4 @@
-const redis = require("./lib/redis");
+const redis = require("../lib/redis");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
