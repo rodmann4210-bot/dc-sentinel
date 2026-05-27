@@ -1,4 +1,4 @@
-const redis = require("../lib/redis");
+const redis = require("./lib/redis");
 const { fetchAircraft, fetchFederalRegister, fetchTFRs, fetchHotelRate, fetchCarRental, scoreSignals } = require("../lib/signals");
 
 module.exports = async function handler(req, res) {
