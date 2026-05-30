@@ -192,6 +192,10 @@ const MANUAL_SIGNALS = {
                guidance:"Normal: 0-4. Claude identifies SAM/AF/PAT callsigns.", icon:"🎖️"},
   tfr_count:  {label:"Active TFRs over DC",      unit:"TFRs",     weight:15, baseline:{mean:4.2,std:2.0},
                guidance:"Normal: 0-6. Send TFR map screenshot to Claude.", icon:"🚁"},
+}hotel_rate: {label:"Hay-Adams / Willard Rate", unit:"$/night",  weight:10, baseline:{mean:425,std:105},
+               guidance:"Normal: $320-530. Check hotels.com for tonight's rate.", icon:"🏨"},
+  car_rental: {label:"DCA Car Rental",           unit:"$/day",    weight:5,  baseline:{mean:68,std:22},
+               guidance:"Normal: $46-90. Check Kayak/Hertz for DCA economy rate.", icon:"🚗"},
 };
  
 const QUAL_DEFS = [
