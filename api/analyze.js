@@ -1,4 +1,4 @@
-export const config = {
+module.exports.config = {
   maxDuration: 60,
 };
 module.exports = async function handler(req, res) {
