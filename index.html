@@ -432,8 +432,6 @@ async function runAnalysis(){
     }
   });
  
-  const covered=Object.values({...AUTO_SIGNALS,...MANUAL_SIGNALS}).reduce((s,[k,d])=>s+(allScores[k]?d.weight:0),0)+Object.entries(qualActive).filter(([,v])=>v).length*5;
- 
   // Recalculate coverage
   let cov=0;
   Object.entries(AUTO_SIGNALS).forEach(([k,def])=>{ if(allScores[k])cov+=def.weight; });
