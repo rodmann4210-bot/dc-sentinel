@@ -313,6 +313,13 @@ function handleManual(id,val){
   manualValues[id]=val===""?null:Number(val);
   buildManualCards();
   updateCoverage();
+  const inp=document.getElementById("input_"+id);
+  if(inp){
+    inp.focus();
+    const v=inp.value;
+    inp.value="";
+    inp.value=v;
+  }
 }
  
 // ── BUILD QUAL ────────────────────────────────────────────────
