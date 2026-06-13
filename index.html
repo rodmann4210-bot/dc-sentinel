@@ -141,7 +141,7 @@
   <div style="background:#0a0a14;border:1px solid #a78bfa33;border-radius:8px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-size:20px">💬</span>
     <div>
-      <div style="font-size:11px;color:#a78bfa;font-family:monospace;font-weight:700">HOW TO USE</div>
+      <div style="font-size:11px;color:#a78bfa;font-family:monospace;font-weight:700">HOW TO USE</div>HOW TO USE <button onclick="resetManual()" style="background:transparent;border:1px solid #334155;border-radius:4px;color:#475569;font-family:monospace;font-size:9px;padding:3px 10px;cursor:pointer;margin-left:10px">⟳ RESET</button>
       <div style="font-size:10px;color:#475569;font-family:monospace;margin-top:3px">Send screenshots of <strong style="color:#e2e8f0">globe.adsbexchange.com</strong> and <strong style="color:#e2e8f0">tfr.faa.gov/tfr3/</strong> to Claude in chat. Claude reads them and gives you the three numbers to enter below.</div>
     </div>
   </div>
@@ -311,6 +311,8 @@ function buildManualCards(){
  
 function handleManual(id,val){
   manualValues[id]=val===""?null:Number(val);
+  if(val==="")localStorage.removeItem("sentinel_"+id);
+  else localStorage.setItem("sentinel_"+id,val);
   buildManualCards();
   updateCoverage();
   const inp=document.getElementById("input_"+id);
@@ -320,6 +322,14 @@ function handleManual(id,val){
     inp.value="";
     inp.value=v;
   }
+}
+  function resetManual(){
+  Object.keys(MANUAL_SIGNALS).forEach(function(id){
+    localStorage.removeItem("sentinel_"+id);
+    manualValues[id]=null;
+  });
+  buildManualCards();
+  updateCoverage();
 }
  
 // ── BUILD QUAL ────────────────────────────────────────────────
@@ -463,7 +473,10 @@ async function runAnalysis(){
 }
  
 // ── INIT ─────────────────────────────────────────────────────
-buildManualCards();
+Object.keys(MANUAL_SIGNALS).forEach(function(id){
+  var s=localStorage.getItem("sentinel_"+id);
+  if(s!==null&&s!=="")manualValues[id]=Number(s);
+});buildManualCards();
 buildQual();
 loadData();
 setInterval(loadData,5*60*1000);
