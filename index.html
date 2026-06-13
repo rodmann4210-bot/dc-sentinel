@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DC Sentinel — Autonomous OSINT</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060610;color:#e2e8f0;font-family:'Courier New',monospace;min-height:100vh}
+    @keyframes alertBlink{0%,100%{box-shadow:0 0 8px 0 currentColor}50%{box-shadow:0 0 28px 6px currentColor}}
+    .header{background:linear-gradient(180deg,#0d0d22,#060610);border-bottom:1px solid #1e293b;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .logo-text{font-size:22px;font-weight:900;letter-spacing:0.22em;color:#f1f5f9}
+    .logo-sub{font-size:8px;color:#1e3a4a;letter-spacing:0.3em}
+    .logo-sub2{font-size:8px;color:#4ade8088;letter-spacing:0.2em;margin-top:2px}
+    .header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .refresh-btn{background:transparent;border:1px solid #1e293b;border-radius:6px;color:#475569;font-family:monospace;font-size:10px;padding:6px 14px;cursor:pointer}
+    .clock-time{font-size:22px;font-weight:900;color:#f1f5f9}
+    .clock-date{font-size:9px;color:#1e3a4a;text-align:right}
+    .alert-badge{padding:10px 16px;border-radius:8px;text-align:center;min-width:110px;border:2px solid}
+    .alert-label{font-size:8px;opacity:0.5;letter-spacing:0.2em;margin-bottom:2px}
+    .alert-level{font-size:15px;font-weight:900;letter-spacing:0.15em}
+    .alert-sigma{font-size:9px;opacity:0.6;margin-top:2px}
+    .sigma-bar{height:5px;background:#0f172a;position:relative}
+    .sigma-bar-fill{height:100%;transition:width 1s ease}
+    .sigma-marker{position:absolute;inset:0;width:1px;background:#1e293b}
+    .main{padding:22px 24px;max-width:1400px;margin:0 auto}
+    .status-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#0a0a14;border:1px solid #1e293b;border-radius:6px;margin-bottom:16px;font-size:10px;font-family:monospace;color:#475569}
+    .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .coverage-box{background:#0a0a14;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:16px}
+    .coverage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+    .coverage-title{font-size:13px;font-weight:700;color:#94a3b8}
+    .coverage-sub{font-size:8px;color:#1e3a4a;letter-spacing:0.25em}
+    .coverage-pct{font-size:32px;font-weight:900;font-family:monospace;line-height:1}
+    .coverage-bar-wrap{height:6px;background:#0f172a;border-radius:3px;margin-bottom:10px;overflow:hidden}
+    .coverage-bar-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
+    .coverage-note{font-size:10px;color:#475569;font-family:monospace;padding:6px 10px;background:#0f0f1a;border-radius:4px}
+    .section-label{font-size:8px;color:#1e3a4a;letter-spacing:0.3em;margin-bottom:10px}
+    .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:26px}
+    .card{background:#0a0a14;border-radius:8px;padding:16px;border:1px solid #1e293b;transition:all 0.5s}
+    .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+    .card-weight{font-size:8px;color:#1e3a4a;letter-spacing:0.2em}
+    .card-name{font-size:12px;font-weight:700;color:#94a3b8}
+    .live-tag{font-size:9px;padding:2px 6px;border-radius:3px;background:#052e16;color:#4ade80;font-family:monospace}
+    .manual-tag{font-size:9px;padding:2px 6px;border-radius:3px;background:#1a0a2e;color:#a78bfa;font-family:monospace}
+    .card-value{font-size:40px;font-weight:900;line-height:1;font-family:monospace;margin-bottom:8px}
+    .card-unit{font-size:10px;color:#475569;font-family:monospace}
+    .sigma-badge{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:4px}
+    .sigma-label{font-weight:900;font-size:12px;font-family:monospace}
+    .sigma-val{font-size:12px;opacity:0.75;font-family:monospace}
+    .awaiting{font-size:10px;color:#334155;font-family:monospace}
+    .manual-input-wrap{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .manual-input{width:90px;background:#060610;border:1px solid #1e293b;border-radius:6px;color:#f1f5f9;font-family:monospace;font-size:26px;font-weight:900;padding:8px 10px;outline:none;transition:border-color 0.3s;-moz-appearance:textfield}
+    .manual-input::-webkit-outer-spin-button,.manual-input::-webkit-inner-spin-button{-webkit-appearance:none}
+    .manual-unit{color:#334155;font-family:monospace;font-size:11px}
+    .manual-guidance{font-size:10px;color:#334155;font-family:monospace;line-height:1.7;padding:6px 10px;background:#0f0f1a;border-radius:4px;border-left:2px solid #a78bfa44;margin-bottom:12px}
+    .qual-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:26px}
+    .qual-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:8px;cursor:pointer;background:#0a0a14;border:1px solid #1e293b;transition:all 0.2s}
+    .qual-item.active{background:#0a1a0a;border-color:#4ade8044;box-shadow:0 0 16px -4px #4ade8033}
+    .qual-checkbox{width:16px;height:16px;border-radius:4px;flex-shrink:0;border:2px solid #1e293b;background:transparent;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+    .qual-checkbox.checked{border-color:#4ade80;background:#4ade80}
+    .qual-label{font-size:12px;color:#475569;flex:1;line-height:1.4}
+    .qual-item.active .qual-label{color:#d1fae5}
+    .qual-plus{font-size:9px;color:#4ade80;padding:2px 6px;background:#052e16;border-radius:3px;flex-shrink:0}
+    .analysis-box{background:#0a0a14;border:1px solid #1e293b;border-radius:8px;padding:20px}
+    .analysis-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+    .analysis-title{font-size:13px;font-weight:700;color:#94a3b8}
+    .analysis-sub{font-size:8px;color:#1e3a4a;letter-spacing:0.25em}
+    .analysis-meta{text-align:right;font-size:9px;color:#334155;font-family:monospace}
+    .run-btn{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:6px;padding:8px 20px;font-family:monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.12em}
+    .run-btn:disabled{background:#111827;color:#374151;cursor:not-allowed}
+    .analysis-result{border-top:1px solid #1e293b;padding-top:16px;color:#cbd5e1;font-family:monospace;font-size:12px;line-height:2.0;white-space:pre-wrap;margin-top:16px}
+    .waiting-msg{font-size:11px;color:#1e3a4a;font-family:monospace;padding:10px;background:#0f0f1a;border-radius:4px}
+    .footer{margin-top:28px;padding-top:16px;border-top:1px solid #0f172a;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+    .footer-text{font-size:9px;color:#1e293b;letter-spacing:0.15em}
+    .footer-links{display:flex;gap:16px}
+    .footer-link{font-size:9px;color:#1e3a4a;text-decoration:none}
+  </style>
+</head>
+<body>
+ 
+<div class="header">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="font-size:30px">🔭</div>
+    <div>
+      <div class="logo-text">DC SENTINEL</div>
+      <div class="logo-sub">AUTONOMOUS OSINT · EARLY WARNING · WASHINGTON D.C.</div>
+      <div class="logo-sub2">● FULLY AUTONOMOUS · UPDATES EVERY 30 MIN</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="refresh-btn" onclick="loadData()">⟳ REFRESH</button>
+    <div style="text-align:right">
+      <div class="clock-time" id="clock">--:--:--</div>
+      <div class="clock-date" id="date">---</div>
+    </div>
+    <div class="alert-badge" id="alertBadge" style="background:#052e16;border-color:#4ade80;color:#4ade80">
+      <div class="alert-label">ALERT LEVEL</div>
+      <div class="alert-level" id="alertLevel">NORMAL</div>
+      <div class="alert-sigma" id="alertSigma">peak 0.0σ</div>
+    </div>
+  </div>
+</div>
+ 
+<div class="sigma-bar">
+  <div class="sigma-bar-fill" id="sigmaBar" style="width:0%;background:linear-gradient(90deg,#4ade80,#4ade80)"></div>
+  <div class="sigma-marker" style="left:22.2%"></div>
+  <div class="sigma-marker" style="left:44.4%"></div>
+  <div class="sigma-marker" style="left:66.6%"></div>
+</div>
+ 
+<div class="main">
+ 
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot" style="background:#facc15"></div>
+    <span>Waiting for data...</span>
+  </div>
+ 
+  <div class="coverage-box">
+    <div class="coverage-header">
+      <div>
+        <div class="coverage-sub">ANALYSIS QUALITY</div>
+        <div class="coverage-title">📊 Signal Coverage</div>
+      </div>
+      <div style="text-align:right">
+        <div class="coverage-pct" id="coveragePct" style="color:#4ade80">0%</div>
+        <div style="font-size:9px;color:#4ade80;letter-spacing:0.15em" id="coverageLabel">LOW COVERAGE</div>
+      </div>
+    </div>
+    <div class="coverage-bar-wrap">
+      <div class="coverage-bar-fill" id="coverageBar" style="width:0%;background:linear-gradient(90deg,#4ade80,#4ade80)"></div>
+    </div>
+    <div class="coverage-note" id="coverageNote">Waiting for first data collection...</div>
+  </div>
+ 
+  <!-- AUTO-COLLECTED SIGNALS -->
+  <div class="section-label">── AUTO-COLLECTED SIGNALS · Federal Register + Hotel + Car Rental · every 30 min</div>
+  <div class="cards-grid" id="autoCardsGrid"></div>
+ 
+  <!-- MANUAL SIGNALS FROM CLAUDE SCREENSHOTS -->
+  <div class="section-label">── FROM CLAUDE SCREENSHOTS · send ADS-B + TFR maps to Claude · enter numbers below</div>
+  <div style="background:#0a0a14;border:1px solid #a78bfa33;border-radius:8px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:20px">💬</span>
+    <div>
+      <div style="font-size:11px;color:#a78bfa;font-family:monospace;font-weight:700">HOW TO USE</div>
+      <div style="font-size:10px;color:#475569;font-family:monospace;margin-top:3px">Send screenshots of <strong style="color:#e2e8f0">globe.adsbexchange.com</strong> and <strong style="color:#e2e8f0">tfr.faa.gov/tfr3/</strong> to Claude in chat. Claude reads them and gives you the three numbers to enter below.</div>
+    </div>
+  </div>
+  <div class="cards-grid" id="manualCardsGrid"></div>
+ 
+  <!-- QUALITATIVE -->
+  <div class="section-label">── QUALITATIVE SIGNALS · toggle when observed · Google Alerts monitors these · 5% each</div>
+  <div class="qual-grid" id="qualGrid"></div>
+ 
+  <!-- AI ANALYSIS -->
+  <div class="analysis-box">
+    <div class="analysis-header">
+      <div>
+        <div class="analysis-sub">AI ENGINE · COVERAGE-AWARE</div>
+        <div class="analysis-title">🧠 Composite Signal Analysis</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="analysis-meta" id="analysisMeta">0 signals · 0% coverage</div>
+        <button class="run-btn" id="runBtn" onclick="runAnalysis()" disabled>▶ RUN ANALYSIS</button>
+      </div>
+    </div>
+    <div class="waiting-msg" id="analysisWaiting">Waiting for first data collection run...</div>
+    <div class="analysis-result" id="analysisResult" style="display:none"></div>
+  </div>
+ 
+  <div class="footer">
+    <span class="footer-text">DC SENTINEL AUTONOMOUS · ALL SOURCES PUBLICLY AVAILABLE</span>
+    <div class="footer-links">
+      <a class="footer-link" href="https://www.federalregister.gov" target="_blank">↗ Federal Register</a>
+      <a class="footer-link" href="https://tfr.faa.gov/tfr3/" target="_blank">↗ FAA TFR</a>
+      <a class="footer-link" href="https://globe.adsbexchange.com" target="_blank">↗ ADS-B Exchange</a>
+      <a class="footer-link" href="https://opensky-network.org" target="_blank">↗ OpenSky</a>
+    </div>
+  </div>
+ 
+</div>
+ 
+<script>
+// ── SIGNAL DEFINITIONS ──────────────────────────────────────
+const AUTO_SIGNALS = {
+  fed_reg: {label:"Fed. Register Emergency Docs", unit:"docs", weight:15, baseline:{mean:0.9,std:1.1}},
+};
+ 
+const MANUAL_SIGNALS = {
+  air_total:  {label:"Aircraft in DC Airspace",  unit:"aircraft", weight:10, baseline:{mean:62,std:18},  guidance:"Normal: 40-80. Send ADS-B screenshot to Claude.", icon:"✈️"},
+  air_mil:    {label:"Military / VIP Aircraft",  unit:"aircraft", weight:15, baseline:{mean:2.1,std:1.4}, guidance:"Normal: 0-4. Claude identifies SAM/AF/PAT callsigns.", icon:"🎖️"},
+  tfr_count:  {label:"Active TFRs over DC",      unit:"TFRs",     weight:15, baseline:{mean:4.2,std:2.0}, guidance:"Normal: 0-6. Send TFR map screenshot to Claude.", icon:"🚁"},
+  hotel_rate: {label:"Hay-Adams / Willard Rate", unit:"$/night",  weight:10, baseline:{mean:425,std:105}, guidance:"Normal: $320-530. Check hotels.com for tonight.", icon:"🏨"},
+  car_rental: {label:"DCA Car Rental",           unit:"$/day",    weight:5,  baseline:{mean:68,std:22},   guidance:"Normal: $46-90. Check Kayak for DCA economy rate.", icon:"🚗"}
+};
+ 
+const QUAL_DEFS = [
+  {id:"staff_dark",   icon:"📵", label:"Congressional/WH staff went dark on social"},
+  {id:"press_surge",  icon:"📷", label:"Unusual press pool surge near key buildings"},
+  {id:"lights_late",  icon:"💡", label:"Lights on past midnight - Capitol/OEOB/Pentagon"},
+  {id:"lobby_cancel", icon:"📋", label:"Mass lobbying meeting cancellations reported"},
+];
+ 
+const TOTAL_WEIGHT = Object.values({...AUTO_SIGNALS,...MANUAL_SIGNALS}).reduce((s,v)=>s+v.weight,0) + QUAL_DEFS.length*5;
+ 
+let currentData = null;
+let manualValues = {};
+let qualActive = {};
+ 
+// ── HELPERS ─────────────────────────────────────────────────
+function zScore(v,{mean,std}){ return std>0?(v-mean)/std:0; }
+ 
+function sigInfo(z){
+  const a=Math.abs(z);
+  if(a<1)return{label:"NORMAL",   color:"#4ade80",bg:"#052e16"};
+  if(a<2)return{label:"WATCH",    color:"#facc15",bg:"#1c1400"};
+  if(a<3)return{label:"ELEVATED", color:"#fb923c",bg:"#1c0a00"};
+  return      {label:"CRITICAL",  color:"#f87171",bg:"#1c0000"};
+}
+ 
+function sigmaBadge(z){
+  if(z===null||z===undefined) return '<span class="awaiting">— NO DATA —</span>';
+  const si=sigInfo(z);
+  return `<div class="sigma-badge" style="background:${si.bg};border:1px solid ${si.color}44">
+    <span class="sigma-label" style="color:${si.color}">${si.label}</span>
+    <span class="sigma-val" style="color:${si.color}">${z>=0?"+":""}${z.toFixed(1)}σ</span>
+  </div>`;
+}
+ 
+// ── CLOCK ────────────────────────────────────────────────────
+function updateClock(){
+  const now=new Date();
+  document.getElementById("clock").textContent=now.toLocaleTimeString("en-US",{hour12:false});
+  document.getElementById("date").textContent=now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+" · EST";
+}
+setInterval(updateClock,1000);
+updateClock();
+ 
+// ── BUILD AUTO CARDS ─────────────────────────────────────────
+function buildAutoCards(scores){
+  const grid=document.getElementById("autoCardsGrid");
+  grid.innerHTML="";
+  Object.entries(AUTO_SIGNALS).forEach(([id,def])=>{
+    const s=scores?scores[id]:null;
+    const z=s?s.z:null;
+    const si=z!==null?sigInfo(z):null;
+    const card=document.createElement("div");
+    card.className="card";
+    if(si&&Math.abs(z)>=1){
+      card.style.borderColor=si.color+"55";
+      if(si.label==="ELEVATED"||si.label==="CRITICAL") card.style.boxShadow=`0 0 16px -4px ${si.color}33`;
+    }
+    card.innerHTML=`
+      <div class="card-header">
+        <div>
+          <div class="card-weight">${def.weight}% WEIGHT · AUTO</div>
+          <div class="card-name">${def.label}</div>
+        </div>
+        ${s?'<div class="live-tag">● LIVE</div>':'<span class="awaiting" style="font-size:9px">FETCHING</span>'}
+      </div>
+      ${s?`
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">
+          <span class="card-value" style="color:${si?si.color:"#f1f5f9"}">${s.value}</span>
+          <span class="card-unit">${def.unit}</span>
+          ${s.value===0?'<span style="font-size:9px;color:#4ade80;font-family:monospace;opacity:0.7">↳ zero</span>':''}
+        </div>
+        ${sigmaBadge(z)}
+      `:'<div class="awaiting">— AWAITING COLLECTION —</div>'}
+    `;
+    grid.appendChild(card);
+  });
+}
+ 
+// ── BUILD MANUAL CARDS ────────────────────────────────────────
+function buildManualCards(){
+  const grid=document.getElementById("manualCardsGrid");
+  grid.innerHTML="";
+  Object.entries(MANUAL_SIGNALS).forEach(([id,def])=>{
+    const val=manualValues[id];
+    const hasVal=val!==null&&val!==undefined&&val!=="";
+    const z=hasVal?zScore(Number(val),def.baseline):null;
+    const si=z!==null?sigInfo(z):null;
+    const card=document.createElement("div");
+    card.className="card";
+    if(si&&Math.abs(z)>=1){
+      card.style.borderColor=si.color+"55";
+      if(si.label==="ELEVATED"||si.label==="CRITICAL") card.style.boxShadow=`0 0 16px -4px ${si.color}33`;
+    }
+    card.innerHTML=`
+      <div class="card-header">
+        <div>
+          <div class="card-weight">${def.weight}% WEIGHT · FROM CLAUDE</div>
+          <div class="card-name">${def.icon} ${def.label}</div>
+        </div>
+        <div class="manual-tag">MANUAL</div>
+      </div>
+      <div class="manual-guidance">${def.guidance}</div>
+      <div class="manual-input-wrap">
+        <input type="number" class="manual-input" id="input_${id}"
+          placeholder="e.g. ${id==='air_total'?'58':id==='air_mil'?'2':'4'}"
+          value="${val!==undefined&&val!==null?val:''}"
+          oninput="handleManual('${id}',this.value)"
+          style="border-color:${si&&Math.abs(z)>=1?si.color+'88':'#1e293b'}"/>
+        <span class="manual-unit">${def.unit}</span>
+      </div>
+      ${hasVal?sigmaBadge(z):'<div class="awaiting">— ENTER VALUE —</div>'}
+      ${hasVal?`<div style="margin-top:6px;font-size:9px;color:#1e3a4a;font-family:monospace">μ=${def.baseline.mean} · σ=${def.baseline.std}</div>`:''}
+    `;
+    grid.appendChild(card);
+  });
+}
+ 
+function handleManual(id,val){
+  manualValues[id]=val===""?null:Number(val);
+  buildManualCards();
+  updateCoverage();
+}
+ 
+// ── BUILD QUAL ────────────────────────────────────────────────
+function buildQual(){
+  const grid=document.getElementById("qualGrid");
+  grid.innerHTML="";
+  QUAL_DEFS.forEach(q=>{
+    const on=!!qualActive[q.id];
+    const item=document.createElement("div");
+    item.className="qual-item"+(on?" active":"");
+    item.innerHTML=`
+      <div class="qual-checkbox${on?" checked":""}">
+        ${on?'<span style="font-size:10px;color:#000;font-weight:900">✓</span>':''}
+      </div>
+      <span style="font-size:18px">${q.icon}</span>
+      <span class="qual-label">${q.label}</span>
+      ${on?'<div class="qual-plus">+5%</div>':''}
+    `;
+    item.onclick=()=>{ qualActive[q.id]=!qualActive[q.id]; buildQual(); updateCoverage(); };
+    grid.appendChild(item);
+  });
+}
+ 
+// ── COVERAGE ─────────────────────────────────────────────────
+function updateCoverage(){
+  const scores=currentData?currentData.scores:{};
+  let covered=0;
+  Object.keys(AUTO_SIGNALS).forEach(k=>{ if(scores[k])covered+=AUTO_SIGNALS[k].weight; });
+  Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{ if(manualValues[k]!==null&&manualValues[k]!==undefined)covered+=def.weight; });
+  Object.entries(qualActive).forEach(([,v])=>{ if(v)covered+=5; });
+  const pct=Math.round((covered/TOTAL_WEIGHT)*100);
+  const color=pct<30?"#f87171":pct<60?"#facc15":pct<80?"#fb923c":"#4ade80";
+  const label=pct<30?"LOW":pct<60?"MODERATE":pct<80?"GOOD":"HIGH";
+  document.getElementById("coveragePct").textContent=pct+"%";
+  document.getElementById("coveragePct").style.color=color;
+  document.getElementById("coverageLabel").textContent=label+" COVERAGE";
+  document.getElementById("coverageLabel").style.color=color;
+  document.getElementById("coverageBar").style.width=pct+"%";
+  document.getElementById("coverageBar").style.background=`linear-gradient(90deg,#4ade80,${color})`;
+  document.getElementById("coverageNote").textContent=
+    pct<30?"⚠ Low — add manual signals or toggle qualitative for better coverage.":
+    pct<60?"◆ Moderate — analysis useful but limited.":
+    pct<80?"● Good — analysis is reasonably reliable.":
+    "✓ High — analysis carries strong analytical weight.";
+ 
+  // Count active signals for analysis
+  let sigCount=Object.keys(scores).length;
+  Object.entries(manualValues).forEach(([,v])=>{ if(v!==null&&v!==undefined)sigCount++; });
+  Object.entries(qualActive).forEach(([,v])=>{ if(v)sigCount++; });
+  document.getElementById("analysisMeta").textContent=`${sigCount} signals · ${pct}% coverage`;
+  document.getElementById("runBtn").disabled=sigCount===0;
+ 
+  // Update alert level combining auto + manual
+  updateAlertLevel(scores);
+}
+ 
+function updateAlertLevel(scores){
+  const allZ=[];
+  Object.entries(AUTO_SIGNALS).forEach(([k,def])=>{ if(scores[k])allZ.push(Math.abs(scores[k].z)); });
+  Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{
+    const v=manualValues[k];
+    if(v!==null&&v!==undefined) allZ.push(Math.abs(zScore(Number(v),def.baseline)));
+  });
+  Object.entries(qualActive).forEach(([,v])=>{ if(v)allZ.push(2.5); });
+  const peakZ=allZ.length?Math.max(...allZ):0;
+  const si=sigInfo(peakZ);
+  const badge=document.getElementById("alertBadge");
+  badge.style.background=si.bg;
+  badge.style.borderColor=si.color;
+  badge.style.color=si.color;
+  badge.style.animation=(si.label==="ELEVATED"||si.label==="CRITICAL")?"alertBlink 2.2s ease infinite":"none";
+  document.getElementById("alertLevel").textContent=si.label;
+  document.getElementById("alertSigma").textContent="peak "+peakZ.toFixed(1)+"σ";
+  const bar=document.getElementById("sigmaBar");
+  bar.style.width=Math.min(100,(peakZ/4.5)*100)+"%";
+  bar.style.background=`linear-gradient(90deg,#4ade80,${si.color})`;
+}
+ 
+// ── LOAD DATA ─────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const r=await fetch("/api/data");
+    const j=await r.json();
+    if(j.ok&&j.data){
+      currentData=j.data;
+      const ago=Math.round((Date.now()-new Date(j.data.timestamp).getTime())/60000);
+      document.getElementById("statusBar").innerHTML=`<div class="status-dot" style="background:#4ade80"></div><span>Last collected: ${ago===0?"just now":ago+" min ago"} · Auto-refreshes every 30 min</span>`;
+      buildAutoCards(j.data.scores);
+      document.getElementById("analysisWaiting").style.display="none";
+    } else {
+      document.getElementById("statusBar").innerHTML=`<div class="status-dot" style="background:#facc15"></div><span>Waiting for first collection — runs automatically every 30 min</span>`;
+      buildAutoCards(null);
+    }
+    updateCoverage();
+  }catch(e){
+    document.getElementById("statusBar").innerHTML=`<div class="status-dot" style="background:#f87171"></div><span>Error loading data</span>`;
+  }
+}
+ 
+// ── RUN ANALYSIS ──────────────────────────────────────────────
+async function runAnalysis(){
+  const scores=currentData?currentData.scores:{};
+  const btn=document.getElementById("runBtn");
+  btn.disabled=true; btn.textContent="ANALYZING...";
+  const result=document.getElementById("analysisResult");
+  result.style.display="none";
+ 
+  // Build combined scores including manual
+  const allScores={...scores};
+  Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{
+    const v=manualValues[k];
+    if(v!==null&&v!==undefined){
+      const z=zScore(Number(v),def.baseline);
+      const a=Math.abs(z);
+      const lbl=a<1?"NORMAL":a<2?"WATCH":a<3?"ELEVATED":"CRITICAL";
+      allScores[k]={value:Number(v),z:+z.toFixed(2),label:lbl,weight:def.weight};
+    }
+  });
+ 
+  const covered=Object.values({...AUTO_SIGNALS,...MANUAL_SIGNALS}).reduce((s,[k,d])=>s+(allScores[k]?d.weight:0),0)+Object.entries(qualActive).filter(([,v])=>v).length*5;
+ 
+  // Recalculate coverage
+  let cov=0;
+  Object.entries(AUTO_SIGNALS).forEach(([k,def])=>{ if(allScores[k])cov+=def.weight; });
+  Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{ if(allScores[k])cov+=def.weight; });
+  Object.entries(qualActive).forEach(([,v])=>{ if(v)cov+=5; });
+  const cpct=Math.round((cov/TOTAL_WEIGHT)*100);
+ 
+  try{
+    const r=await fetch("/api/analyze",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({scores:allScores,coveragePct:cpct,qualActive})
+    });
+    const j=await r.json();
+    result.textContent=j.ok?j.analysis:"⚠ "+j.error;
+    result.style.display="block";
+  }catch(e){
+    result.textContent="⚠ "+e.message;
+    result.style.display="block";
+  }
+  btn.disabled=false; btn.textContent="▶ RUN ANALYSIS";
+}
+ 
+// ── INIT ─────────────────────────────────────────────────────
+buildManualCards();
+buildQual();
+loadData();
+setInterval(loadData,5*60*1000);
+</script>
+</body>
+</html>
