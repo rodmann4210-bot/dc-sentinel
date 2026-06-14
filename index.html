@@ -77,7 +77,7 @@
   </style>
 </head>
 <body>
- 
+
 <div class="header">
   <div style="display:flex;align-items:center;gap:14px">
     <div style="font-size:30px">🔭</div>
@@ -100,21 +100,21 @@
     </div>
   </div>
 </div>
- 
+
 <div class="sigma-bar">
   <div class="sigma-bar-fill" id="sigmaBar" style="width:0%;background:linear-gradient(90deg,#4ade80,#4ade80)"></div>
   <div class="sigma-marker" style="left:22.2%"></div>
   <div class="sigma-marker" style="left:44.4%"></div>
   <div class="sigma-marker" style="left:66.6%"></div>
 </div>
- 
+
 <div class="main">
- 
+
   <div class="status-bar" id="statusBar">
     <div class="status-dot" style="background:#facc15"></div>
     <span>Waiting for data...</span>
   </div>
- 
+
   <div class="coverage-box">
     <div class="coverage-header">
       <div>
@@ -131,26 +131,26 @@
     </div>
     <div class="coverage-note" id="coverageNote">Waiting for first data collection...</div>
   </div>
- 
+
   <!-- AUTO-COLLECTED SIGNALS -->
   <div class="section-label">── AUTO-COLLECTED SIGNALS · Federal Register + Hotel + Car Rental · every 30 min</div>
   <div class="cards-grid" id="autoCardsGrid"></div>
- 
+
   <!-- MANUAL SIGNALS FROM CLAUDE SCREENSHOTS -->
   <div class="section-label">── FROM CLAUDE SCREENSHOTS · send ADS-B + TFR maps to Claude · enter numbers below</div>
   <div style="background:#0a0a14;border:1px solid #a78bfa33;border-radius:8px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-size:20px">💬</span>
     <div>
-      <div style="font-size:11px;color:#a78bfa;font-family:monospace;font-weight:700">HOW TO USE</div>
+      <div style="font-size:11px;color:#a78bfa;font-family:monospace;font-weight:700">HOW TO USE <button onclick="resetManual()" style="background:transparent;border:1px solid #334155;border-radius:4px;color:#475569;font-family:monospace;font-size:9px;padding:3px 10px;cursor:pointer;margin-left:10px">↺ RESET</button></div>
       <div style="font-size:10px;color:#475569;font-family:monospace;margin-top:3px">Send screenshots of <strong style="color:#e2e8f0">globe.adsbexchange.com</strong> and <strong style="color:#e2e8f0">tfr.faa.gov/tfr3/</strong> to Claude in chat. Claude reads them and gives you the three numbers to enter below.</div>
     </div>
   </div>
   <div class="cards-grid" id="manualCardsGrid"></div>
- 
+
   <!-- QUALITATIVE -->
   <div class="section-label">── QUALITATIVE SIGNALS · toggle when observed · Google Alerts monitors these · 5% each</div>
   <div class="qual-grid" id="qualGrid"></div>
- 
+
   <!-- AI ANALYSIS -->
   <div class="analysis-box">
     <div class="analysis-header">
@@ -166,7 +166,7 @@
     <div class="waiting-msg" id="analysisWaiting">Waiting for first data collection run...</div>
     <div class="analysis-result" id="analysisResult" style="display:none"></div>
   </div>
- 
+
   <div class="footer">
     <span class="footer-text">DC SENTINEL AUTONOMOUS · ALL SOURCES PUBLICLY AVAILABLE</span>
     <div class="footer-links">
@@ -176,15 +176,15 @@
       <a class="footer-link" href="https://opensky-network.org" target="_blank">↗ OpenSky</a>
     </div>
   </div>
- 
+
 </div>
- 
+
 <script>
 // ── SIGNAL DEFINITIONS ──────────────────────────────────────
 const AUTO_SIGNALS = {
   fed_reg: {label:"Fed. Register Emergency Docs", unit:"docs", weight:15, baseline:{mean:0.9,std:1.1}},
 };
- 
+
 const MANUAL_SIGNALS = {
   air_total:  {label:"Aircraft in DC Airspace",  unit:"aircraft", weight:10, baseline:{mean:62,std:18},  guidance:"Normal: 40-80. Send ADS-B screenshot to Claude.", icon:"✈️"},
   air_mil:    {label:"Military / VIP Aircraft",  unit:"aircraft", weight:15, baseline:{mean:2.1,std:1.4}, guidance:"Normal: 0-4. Claude identifies SAM/AF/PAT callsigns.", icon:"🎖️"},
@@ -192,23 +192,23 @@ const MANUAL_SIGNALS = {
   hotel_rate: {label:"Hay-Adams / Willard Rate", unit:"$/night",  weight:10, baseline:{mean:425,std:105}, guidance:"Normal: $320-530. Check hotels.com for tonight.", icon:"🏨"},
   car_rental: {label:"DCA Car Rental",           unit:"$/day",    weight:5,  baseline:{mean:68,std:22},   guidance:"Normal: $46-90. Check Kayak for DCA economy rate.", icon:"🚗"}
 };
- 
+
 const QUAL_DEFS = [
   {id:"staff_dark",   icon:"📵", label:"Congressional/WH staff went dark on social"},
   {id:"press_surge",  icon:"📷", label:"Unusual press pool surge near key buildings"},
   {id:"lights_late",  icon:"💡", label:"Lights on past midnight - Capitol/OEOB/Pentagon"},
   {id:"lobby_cancel", icon:"📋", label:"Mass lobbying meeting cancellations reported"},
 ];
- 
+
 const TOTAL_WEIGHT = Object.values({...AUTO_SIGNALS,...MANUAL_SIGNALS}).reduce((s,v)=>s+v.weight,0) + QUAL_DEFS.length*5;
- 
+
 let currentData = null;
 let manualValues = {};
 let qualActive = {};
- 
+
 // ── HELPERS ─────────────────────────────────────────────────
 function zScore(v,{mean,std}){ return std>0?(v-mean)/std:0; }
- 
+
 function sigInfo(z){
   const a=Math.abs(z);
   if(a<1)return{label:"NORMAL",   color:"#4ade80",bg:"#052e16"};
@@ -216,7 +216,7 @@ function sigInfo(z){
   if(a<3)return{label:"ELEVATED", color:"#fb923c",bg:"#1c0a00"};
   return      {label:"CRITICAL",  color:"#f87171",bg:"#1c0000"};
 }
- 
+
 function sigmaBadge(z){
   if(z===null||z===undefined) return '<span class="awaiting">— NO DATA —</span>';
   const si=sigInfo(z);
@@ -225,7 +225,7 @@ function sigmaBadge(z){
     <span class="sigma-val" style="color:${si.color}">${z>=0?"+":""}${z.toFixed(1)}σ</span>
   </div>`;
 }
- 
+
 // ── CLOCK ────────────────────────────────────────────────────
 function updateClock(){
   const now=new Date();
@@ -234,7 +234,7 @@ function updateClock(){
 }
 setInterval(updateClock,1000);
 updateClock();
- 
+
 // ── BUILD AUTO CARDS ─────────────────────────────────────────
 function buildAutoCards(scores){
   const grid=document.getElementById("autoCardsGrid");
@@ -269,7 +269,7 @@ function buildAutoCards(scores){
     grid.appendChild(card);
   });
 }
- 
+
 // ── BUILD MANUAL CARDS ────────────────────────────────────────
 function buildManualCards(){
   const grid=document.getElementById("manualCardsGrid");
@@ -308,13 +308,26 @@ function buildManualCards(){
     grid.appendChild(card);
   });
 }
- 
+
 function handleManual(id,val){
   manualValues[id]=val===""?null:Number(val);
+  if(val==="")localStorage.removeItem("sentinel_"+id);
+  else localStorage.setItem("sentinel_"+id,val);
+  buildManualCards();
+  updateCoverage();
+  const inp=document.getElementById("input_"+id);
+  if(inp){inp.focus();const v=inp.value;inp.value="";inp.value=v;}
+}
+
+function resetManual(){
+  Object.keys(MANUAL_SIGNALS).forEach(function(id){
+    localStorage.removeItem("sentinel_"+id);
+    manualValues[id]=null;
+  });
   buildManualCards();
   updateCoverage();
 }
- 
+
 // ── BUILD QUAL ────────────────────────────────────────────────
 function buildQual(){
   const grid=document.getElementById("qualGrid");
@@ -335,7 +348,7 @@ function buildQual(){
     grid.appendChild(item);
   });
 }
- 
+
 // ── COVERAGE ─────────────────────────────────────────────────
 function updateCoverage(){
   const scores=currentData?currentData.scores:{};
@@ -357,18 +370,14 @@ function updateCoverage(){
     pct<60?"◆ Moderate — analysis useful but limited.":
     pct<80?"● Good — analysis is reasonably reliable.":
     "✓ High — analysis carries strong analytical weight.";
- 
-  // Count active signals for analysis
   let sigCount=Object.keys(scores).length;
   Object.entries(manualValues).forEach(([,v])=>{ if(v!==null&&v!==undefined)sigCount++; });
   Object.entries(qualActive).forEach(([,v])=>{ if(v)sigCount++; });
   document.getElementById("analysisMeta").textContent=`${sigCount} signals · ${pct}% coverage`;
   document.getElementById("runBtn").disabled=sigCount===0;
- 
-  // Update alert level combining auto + manual
   updateAlertLevel(scores);
 }
- 
+
 function updateAlertLevel(scores){
   const allZ=[];
   Object.entries(AUTO_SIGNALS).forEach(([k,def])=>{ if(scores[k])allZ.push(Math.abs(scores[k].z)); });
@@ -390,7 +399,7 @@ function updateAlertLevel(scores){
   bar.style.width=Math.min(100,(peakZ/4.5)*100)+"%";
   bar.style.background=`linear-gradient(90deg,#4ade80,${si.color})`;
 }
- 
+
 // ── LOAD DATA ─────────────────────────────────────────────────
 async function loadData(){
   try{
@@ -411,7 +420,7 @@ async function loadData(){
     document.getElementById("statusBar").innerHTML=`<div class="status-dot" style="background:#f87171"></div><span>Error loading data</span>`;
   }
 }
- 
+
 // ── RUN ANALYSIS ──────────────────────────────────────────────
 async function runAnalysis(){
   const scores=currentData?currentData.scores:{};
@@ -419,8 +428,6 @@ async function runAnalysis(){
   btn.disabled=true; btn.textContent="ANALYZING...";
   const result=document.getElementById("analysisResult");
   result.style.display="none";
- 
-  // Build combined scores including manual
   const allScores={...scores};
   Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{
     const v=manualValues[k];
@@ -431,16 +438,11 @@ async function runAnalysis(){
       allScores[k]={value:Number(v),z:+z.toFixed(2),label:lbl,weight:def.weight};
     }
   });
- 
-  const covered=Object.values({...AUTO_SIGNALS,...MANUAL_SIGNALS}).reduce((s,[k,d])=>s+(allScores[k]?d.weight:0),0)+Object.entries(qualActive).filter(([,v])=>v).length*5;
- 
-  // Recalculate coverage
   let cov=0;
   Object.entries(AUTO_SIGNALS).forEach(([k,def])=>{ if(allScores[k])cov+=def.weight; });
   Object.entries(MANUAL_SIGNALS).forEach(([k,def])=>{ if(allScores[k])cov+=def.weight; });
   Object.entries(qualActive).forEach(([,v])=>{ if(v)cov+=5; });
   const cpct=Math.round((cov/TOTAL_WEIGHT)*100);
- 
   try{
     const r=await fetch("/api/analyze",{
       method:"POST",
@@ -456,8 +458,12 @@ async function runAnalysis(){
   }
   btn.disabled=false; btn.textContent="▶ RUN ANALYSIS";
 }
- 
+
 // ── INIT ─────────────────────────────────────────────────────
+Object.keys(MANUAL_SIGNALS).forEach(function(id){
+  var s=localStorage.getItem("sentinel_"+id);
+  if(s!==null&&s!=="")manualValues[id]=Number(s);
+});
 buildManualCards();
 buildQual();
 loadData();
