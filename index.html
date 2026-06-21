@@ -75,6 +75,7 @@
     .footer-links{display:flex;gap:16px}
     .footer-link{font-size:9px;color:#1e3a4a;text-decoration:none}
   </style>
+  <script src="/sentinelScoring.js"></script>
 </head>
 <body>
 
@@ -147,6 +148,20 @@
   </div>
   <div class="cards-grid" id="manualCardsGrid"></div>
 
+  <!-- TFR STRUCTURE TYPE (drives structure-aware scoring + the saved log) -->
+  <div class="section-label">── TFR STRUCTURE · scored by TYPE, not ring count · set before saving a pull</div>
+  <div style="background:#0a0a14;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:26px">
+    <div style="font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:10px">🚁 TFR Structure</div>
+    <select id="tfrType" onchange="handleTfrType(this.value)" style="width:100%;background:#060610;border:1px solid #1e293b;border-radius:6px;color:#f1f5f9;font-family:monospace;font-size:13px;padding:10px;outline:none">
+      <option value="none">None / cleared</option>
+      <option value="golf">Golf (routine POTUS)</option>
+      <option value="event">Event ring (South Lawn / stadium)</option>
+      <option value="vip3">VIP 3 NM</option>
+      <option value="pres">Presidential 30/10 NM</option>
+      <option value="preslayered">Presidential + layered (arrival)</option>
+    </select>
+  </div>
+
   <!-- QUALITATIVE -->
   <div class="section-label">── QUALITATIVE SIGNALS · toggle when observed · Google Alerts monitors these · 5% each</div>
   <div class="qual-grid" id="qualGrid"></div>
@@ -165,6 +180,22 @@
     </div>
     <div class="waiting-msg" id="analysisWaiting">Waiting for first data collection run...</div>
     <div class="analysis-result" id="analysisResult" style="display:none"></div>
+  </div>
+
+  <!-- PULL LOG (saved to Vercel Blob via /api/log) -->
+  <div class="section-label">── PULL LOG · saved to storage · export opens in Sheets</div>
+  <div class="coverage-box">
+    <div class="coverage-header">
+      <div>
+        <div class="coverage-sub">PERSISTENT LOG</div>
+        <div class="coverage-title">🗂️ Saved Pulls</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="run-btn" id="savePullBtn" onclick="savePull()" style="background:linear-gradient(135deg,#059669,#10b981)">💾 SAVE THIS PULL</button>
+        <a class="refresh-btn" href="/api/log?download=1" download style="text-decoration:none;padding:8px 14px">⬇ EXPORT CSV</a>
+      </div>
+    </div>
+    <div id="logView" style="color:#475569;font-family:monospace;font-size:11px;overflow-x:auto">loading…</div>
   </div>
 
   <div class="footer">
@@ -459,6 +490,66 @@ async function runAnalysis(){
   btn.disabled=false; btn.textContent="▶ RUN ANALYSIS";
 }
 
+// ── PULL LOG (save / export / table) ────────────────────────
+var tfrType = "none";
+function handleTfrType(v){ tfrType=v; try{localStorage.setItem("sentinel_tfrType",v);}catch(e){} }
+function restoreTfrType(){
+  try{ var s=localStorage.getItem("sentinel_tfrType"); if(s) tfrType=s; }catch(e){}
+  var el=document.getElementById("tfrType"); if(el) el.value=tfrType;
+}
+async function savePull(){
+  if(typeof SENTINEL==="undefined"){ alert("Scoring script not loaded — check that /sentinelScoring.js is committed."); return; }
+  var now=new Date();
+  var pull={
+    date: now.toISOString().slice(0,10),
+    time: now.toTimeString().slice(0,5),
+    aircraft: Number(manualValues.air_total)||0,
+    mil: Number(manualValues.air_mil)||0,
+    tfrCount: (manualValues.tfr_count!=null&&manualValues.tfr_count!=="")?Number(manualValues.tfr_count):"",
+    tfrType: tfrType,
+    hotel: Number(manualValues.hotel_rate)||0,
+    car: Number(manualValues.car_rental)||0,
+    note: ""
+  };
+  var row=SENTINEL.toLogRow(pull);
+  var btn=document.getElementById("savePullBtn");
+  btn.disabled=true; btn.textContent="SAVING…";
+  try{
+    var r=await fetch("/api/log",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({row:row})});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    btn.textContent="✓ SAVED";
+    await renderLog();
+    setTimeout(function(){btn.textContent="💾 SAVE THIS PULL";btn.disabled=false;},1500);
+  }catch(e){
+    btn.textContent="⚠ FAILED — "+e.message; btn.disabled=false;
+    setTimeout(function(){btn.textContent="💾 SAVE THIS PULL";},2500);
+  }
+}
+async function renderLog(){
+  var el=document.getElementById("logView");
+  if(!el) return;
+  try{
+    var resp=await fetch("/api/log",{cache:"no-store"});
+    var csv=(await resp.text()).trim();
+    var lines=csv.split(/\r?\n/);
+    if(lines.length<2){ el.textContent="No pulls logged yet — enter your numbers, pick a TFR type, and hit SAVE THIS PULL."; return; }
+    var rows=lines.slice(1).filter(Boolean).reverse();
+    function fc(f){ return f==="CRITICAL"?"#f87171":f==="ELEVATED"?"#fb923c":f==="WATCH"?"#facc15":"#4ade80"; }
+    var body=rows.map(function(line){
+      var c=line.split(",");
+      return '<tr style="border-top:1px solid #1e293b">'+
+        '<td style="padding:6px 8px;white-space:nowrap;color:#94a3b8">'+(c[0]||"")+' '+(c[1]||"")+'</td>'+
+        '<td>'+(c[2]||"")+'</td><td>'+(c[3]||"")+'</td><td>'+(c[5]||c[4]||"")+'</td>'+
+        '<td>$'+(c[6]||"")+'</td><td>$'+(c[7]||"")+'</td>'+
+        '<td style="color:'+fc(c[13])+';font-weight:700">'+(c[13]||"")+'</td></tr>';
+    }).join("");
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="color:#475569;text-align:left">'+
+      '<th style="padding:6px 8px">Date</th><th>AC</th><th>Mil</th><th>TFR</th><th>Hotel</th><th>Car</th><th>Flag</th></tr></thead>'+
+      '<tbody>'+body+'</tbody></table>';
+  }catch(e){ el.textContent="Log unavailable — "+(e.message||e); }
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 Object.keys(MANUAL_SIGNALS).forEach(function(id){
   var s=localStorage.getItem("sentinel_"+id);
@@ -467,6 +558,8 @@ Object.keys(MANUAL_SIGNALS).forEach(function(id){
 buildManualCards();
 buildQual();
 loadData();
+restoreTfrType();
+renderLog();
 setInterval(loadData,5*60*1000);
 </script>
 </body>
