@@ -1,46 +1,62 @@
-const { getRedis, fetchAircraft, fetchFederalRegister, scoreSignals } = require("./signals");
-const redis = getRedis();
+/* ==================================================================
+ * api/log.js  —  DC Sentinel daily log on Vercel Blob (CommonJS)
+ * Matches the require()/module.exports style of collect.js.
+ *   GET  /api/log            -> returns the CSV (radar + read table)
+ *   GET  /api/log?download=1 -> same CSV, as a file download (export)
+ *   POST /api/log  {row}     -> appends one CSV line, returns {ok,row}
+ * Needs the connected Blob store (auto-injects BLOB_READ_WRITE_TOKEN).
+ * ================================================================== */
+
+const { list, put } = require("@vercel/blob");
+
+const FILE = "sentinel_daily_log.csv";
+const HEADER =
+  "date,time_local,aircraft,mil_vip,tfr_count,tfr_type,hotel_usd,car_usd," +
+  "aircraft_z,mil_z,tfr_intensity,hotel_z,car_z,overall_flag,event_note";
+
+async function readCsv() {
+  const { blobs } = await list({ prefix: FILE });
+  const hit = blobs.find(function (b) { return b.pathname === FILE; });
+  if (!hit) return HEADER + "\n";
+  const r = await fetch(hit.url, { cache: "no-store" });
+  return r.ok ? await r.text() : HEADER + "\n";
+}
+
+async function writeCsv(text) {
+  await put(FILE, text, {
+    access: "public",
+    contentType: "text/csv",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+}
 
 module.exports = async function handler(req, res) {
-  const isVercelCron = req.headers["x-vercel-cron"] === "1";
-  const hasSecret = req.query.token === process.env.CRON_SECRET;
-  if (!isVercelCron && !hasSecret) return res.status(401).json({ error: "Unauthorized" });
-
-  const timestamp = new Date().toISOString();
-  const readings = {}, errors = {}, fetched = [];
-
-  const [aircraft, fedReg] = await Promise.allSettled([
-    fetchAircraft(process.env.OPENSKY_USER, process.env.OPENSKY_PASS),
-    fetchFederalRegister(),
-  ]);
-
-  if (aircraft.status === "fulfilled" && aircraft.value.success) {
-    readings.air_total = aircraft.value.total;
-    readings.air_mil = aircraft.value.military;
-    fetched.push("opensky");
-  } else errors.opensky = aircraft.value?.error || "failed";
-
-  if (fedReg.status === "fulfilled" && fedReg.value.success) {
-    readings.fed_reg = fedReg.value.count;
-    fetched.push("fed_reg");
-  } else errors.fed_reg = fedReg.value?.error || "failed";
-
-  const { scores, alerts, peakZ, coveragePct, levelLabel } = scoreSignals(readings);
-  const result = { timestamp, readings, scores, alerts, peakZ, coveragePct, levelLabel, fetched, errors };
-
   try {
-    await redis.set("latest", JSON.stringify(result));
-    await redis.set(`history:${timestamp}`, JSON.stringify(result), { ex: 172800 });
-  } catch (e) { errors.redis = e.message; }
+    if (req.method === "GET") {
+      const csv = await readCsv();
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      if (req.query && req.query.download) {
+        res.setHeader("Content-Disposition", 'attachment; filename="' + FILE + '"');
+      }
+      return res.status(200).send(csv);
+    }
 
-  if (alerts.length > 0 && peakZ >= 2 && process.env.RESEND_API_KEY && process.env.ALERT_EMAIL) {
-    try {
-      const levelColor = peakZ >= 3 ? "#f87171" : "#fb923c";
-      const rows = alerts.map(a => `<tr><td style="padding:6px 12px;color:#94a3b8;font-family:monospace">${a.signal.replace(/_/g," ").toUpperCase()}</td><td style="padding:6px 12px;color:${levelColor};font-family:monospace">${a.label} (${a.z>=0?"+":""}${a.z}σ)</td></tr>`).join("");
-      const html = `<div style="background:#060610;padding:20px;font-family:monospace"><div style="max-width:600px;margin:0 auto;background:#0a0a14;border:1px solid ${levelColor}44;border-radius:8px;padding:24px"><h2 style="color:${levelColor};margin:0 0 8px">🔭 DC SENTINEL — ${levelLabel}</h2><p style="color:#64748b;margin:0 0 16px">Peak ${peakZ.toFixed(1)}σ · Coverage ${coveragePct}%</p><table style="width:100%">${rows}</table><br><a href="${process.env.APP_URL||"https://dc-sentinel.vercel.app"}" style="background:#4f46e5;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-family:monospace">OPEN DC SENTINEL →</a></div></div>`;
-      await fetch("https://api.resend.com/emails", { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${process.env.RESEND_API_KEY}`}, body:JSON.stringify({ from:"DC Sentinel <onboarding@resend.dev>", to:[process.env.ALERT_EMAIL], subject:`🔭 DC Sentinel ${levelLabel} — ${peakZ.toFixed(1)}σ`, html }) });
-    } catch (e) { errors.email = e.message; }
+    if (req.method === "POST") {
+      const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+      const row = String(body.row || "").replace(/[\r\n]+/g, " ").trim();
+      if (!row) return res.status(400).json({ error: "missing row" });
+      let csv = await readCsv();
+      if (!csv.endsWith("\n")) csv += "\n";
+      csv += row + "\n";
+      await writeCsv(csv);
+      return res.status(200).json({ ok: true, row: row });
+    }
+
+    res.setHeader("Allow", "GET, POST");
+    return res.status(405).json({ error: "method not allowed" });
+  } catch (e) {
+    return res.status(500).json({ error: String((e && e.message) || e) });
   }
-
-  return res.status(200).json({ ok: true, ...result });
 };
