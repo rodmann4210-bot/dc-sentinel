@@ -2,6 +2,7 @@
   "name": "dc-sentinel",
   "version": "1.0.0",
   "dependencies": {
-    "@upstash/redis": "^1.28.0"
+    "@upstash/redis": "^1.28.0",
+    "@vercel/blob": "^2.4.1"
   }
 }
