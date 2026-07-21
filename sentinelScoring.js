@@ -83,3 +83,58 @@
   };
 
 })(window);
+// ============================================================
+// DIGNIFIED TRANSFER MODULE — Dover AFB honor flag
+// Append to sentinelScoring.js (extends the global SENTINEL object)
+// NOTE: This is an HONOR marker, NOT a security alarm.
+// It never contributes to threat/anomaly scoring (severity 0).
+// ============================================================
+(function (S) {
+  // Dover AFB (KDOV) reference point
+  S.DOVER_AFB = { lat: 39.1295, lon: -75.4664, name: "Dover AFB (KDOV)" };
+
+  // Great-circle distance in nautical miles
+  function nmBetween(a, b) {
+    const toRad = d => d * Math.PI / 180;
+    const R = 3440.065; // NM
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  // Classify a TFR as a Dover dignified-transfer ring.
+  // Feed it whatever you can read off the pull: ring center lat/lon,
+  // cited CFR, structure. Center within ~15 NM of Dover + a
+  // presidential-grade structure => dignified transfer.
+  S.classifyDoverRing = function (tfr) {
+    if (!tfr || tfr.centerLat == null || tfr.centerLon == null) return null;
+    const center = { lat: tfr.centerLat, lon: tfr.centerLon };
+    const distNM = nmBetween(center, S.DOVER_AFB);
+    const nearDover = distNM <= 15;
+    const presidential =
+      (tfr.cfr && String(tfr.cfr).includes("91.141")) ||
+      tfr.structure === "concentric" ||
+      tfr.presidential === true;
+
+    if (nearDover && presidential) {
+      return {
+        type: "dignified_transfer",
+        category: "HONOR",   // never "alarm"
+        severity: 0,         // never adds to the threat score
+        label: "Dignified Transfer — Dover AFB",
+        badge: "🇺🇸",
+        halfStaff: true,
+        distNM: Math.round(distNM)
+      };
+    }
+    return null;
+  };
+
+  // Does a logged pull fall on a dignified-transfer day?
+  S.isDignifiedTransferDay = function (pull) {
+    return !!(pull && pull.dignifiedTransfer && pull.dignifiedTransfer.active);
+  };
+})(window.SENTINEL = window.SENTINEL || {});
