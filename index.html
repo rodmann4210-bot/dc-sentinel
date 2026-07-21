@@ -74,6 +74,10 @@
     .footer-text{font-size:9px;color:#1e293b;letter-spacing:0.15em}
     .footer-links{display:flex;gap:16px}
     .footer-link{font-size:9px;color:#1e3a4a;text-decoration:none}
+    /* ── DIGNIFIED TRANSFER honor channel (File 2) · steel-blue, never the alarm palette ── */
+    .dt-banner{display:flex;align-items:center;gap:14px;padding:12px 18px;margin-bottom:16px;border-radius:8px;background:linear-gradient(180deg,#0c1826,#0a0f18);border:1px solid #2c5282;border-left:4px solid #4a7bab}
+    .dt-banner-title{font-size:13px;font-weight:900;letter-spacing:0.18em;color:#dbeafe}
+    .dt-banner-sub{font-size:10px;color:#7c96b3;font-family:monospace;margin-top:3px;letter-spacing:0.04em}
   </style>
   <script src="/sentinelScoring.js"></script>
 </head>
@@ -110,6 +114,15 @@
 </div>
 
 <div class="main">
+
+  <!-- DIGNIFIED TRANSFER day-of banner (honor channel · half-staff) -->
+  <div class="dt-banner" id="dtBanner" style="display:none">
+    <span style="font-size:24px">🇺🇸</span>
+    <div>
+      <div class="dt-banner-title">DIGNIFIED TRANSFER — DOVER AFB</div>
+      <div class="dt-banner-sub">Honoring our fallen service members returning home · flags at half-staff</div>
+    </div>
+  </div>
 
   <div class="status-bar" id="statusBar">
     <div class="status-dot" style="background:#facc15"></div>
@@ -191,6 +204,7 @@
         <div class="coverage-title">🗂️ Saved Pulls</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="run-btn" id="dtBtn" onclick="toggleDignifiedTransfer()" style="background:transparent;border:1px solid #1e293b;color:#475569">🇺🇸 MARK DIGNIFIED TRANSFER</button>
         <button class="run-btn" id="savePullBtn" onclick="savePull()" style="background:linear-gradient(135deg,#059669,#10b981)">💾 SAVE THIS PULL</button>
         <a class="refresh-btn" href="/api/log?download=1" download style="text-decoration:none;padding:8px 14px">⬇ EXPORT CSV</a>
       </div>
@@ -497,6 +511,36 @@ function restoreTfrType(){
   try{ var s=localStorage.getItem("sentinel_tfrType"); if(s) tfrType=s; }catch(e){}
   var el=document.getElementById("tfrType"); if(el) el.value=tfrType;
 }
+
+// ── DIGNIFIED TRANSFER honor channel (File 2) ───────────────
+// Pure honor marker: tags the saved pull's note, arms solemn styling +
+// the half-staff banner. Never touches scoring, coverage, or the σ math.
+var DT_TAG = "DIGNIFIED_TRANSFER";
+var dtArmed = false;
+
+function applyDtButtonStyle(){
+  var btn=document.getElementById("dtBtn");
+  if(!btn) return;
+  btn.style.background = dtArmed ? "linear-gradient(135deg,#1e3a5f,#2c5282)" : "transparent";
+  btn.style.border     = "1px solid " + (dtArmed ? "#4a7bab" : "#1e293b");
+  btn.style.color      = dtArmed ? "#dbeafe" : "#475569";
+  btn.textContent      = dtArmed ? "🇺🇸 DIGNIFIED TRANSFER: ARMED" : "🇺🇸 MARK DIGNIFIED TRANSFER";
+}
+
+function toggleDignifiedTransfer(){
+  dtArmed=!dtArmed;
+  try{ if(dtArmed) localStorage.setItem("sentinel_dtArmed","1"); else localStorage.removeItem("sentinel_dtArmed"); }catch(e){}
+  applyDtButtonStyle();
+  updateDtBanner(false);   // banner shows the instant you arm it
+  renderLog();             // re-render so today's rows pick up the honor styling
+}
+
+function updateDtBanner(todayHasLoggedDT){
+  var b=document.getElementById("dtBanner");
+  if(!b) return;
+  b.style.display = (dtArmed || todayHasLoggedDT) ? "flex" : "none";
+}
+
 async function savePull(){
   if(typeof SENTINEL==="undefined"){ alert("Scoring script not loaded — check that /sentinelScoring.js is committed."); return; }
   var now=new Date();
@@ -509,7 +553,7 @@ async function savePull(){
     tfrType: tfrType,
     hotel: Number(manualValues.hotel_rate)||0,
     car: Number(manualValues.car_rental)||0,
-    note: ""
+    note: dtArmed ? DT_TAG : ""
   };
   var row=SENTINEL.toLogRow(pull);
   var btn=document.getElementById("savePullBtn");
@@ -532,13 +576,21 @@ async function renderLog(){
     var resp=await fetch("/api/log",{cache:"no-store"});
     var csv=(await resp.text()).trim();
     var lines=csv.split(/\r?\n/);
-    if(lines.length<2){ el.textContent="No pulls logged yet — enter your numbers, pick a TFR type, and hit SAVE THIS PULL."; return; }
+    if(lines.length<2){ el.textContent="No pulls logged yet — enter your numbers, pick a TFR type, and hit SAVE THIS PULL."; updateDtBanner(false); return; }
     var rows=lines.slice(1).filter(Boolean).reverse();
+    var todayStr=new Date().toISOString().slice(0,10);
+    var todayHasLoggedDT=false;
     function fc(f){ return f==="CRITICAL"?"#f87171":f==="ELEVATED"?"#fb923c":f==="WATCH"?"#facc15":"#4ade80"; }
     var body=rows.map(function(line){
       var c=line.split(",");
-      return '<tr style="border-top:1px solid #1e293b">'+
-        '<td style="padding:6px 8px;white-space:nowrap;color:#94a3b8">'+(c[0]||"")+' '+(c[1]||"")+'</td>'+
+      var isDT=line.indexOf(DT_TAG)!==-1;
+      if(isDT && (c[0]||"")===todayStr) todayHasLoggedDT=true;
+      var rowStyle=isDT
+        ? 'border-top:1px solid #1e293b;border-left:3px solid #4a7bab;background:#0c1420'
+        : 'border-top:1px solid #1e293b';
+      var dateCell=(isDT?'<span title="Dignified Transfer — Dover AFB" style="margin-right:6px">🇺🇸</span>':'')+(c[0]||"")+' '+(c[1]||"");
+      return '<tr style="'+rowStyle+'">'+
+        '<td style="padding:6px 8px;white-space:nowrap;color:'+(isDT?'#cbd5e1':'#94a3b8')+'">'+dateCell+'</td>'+
         '<td>'+(c[2]||"")+'</td><td>'+(c[3]||"")+'</td><td>'+(c[5]||c[4]||"")+'</td>'+
         '<td>$'+(c[6]||"")+'</td><td>$'+(c[7]||"")+'</td>'+
         '<td style="color:'+fc(c[13])+';font-weight:700">'+(c[13]||"")+'</td></tr>';
@@ -547,7 +599,8 @@ async function renderLog(){
       '<thead><tr style="color:#475569;text-align:left">'+
       '<th style="padding:6px 8px">Date</th><th>AC</th><th>Mil</th><th>TFR</th><th>Hotel</th><th>Car</th><th>Flag</th></tr></thead>'+
       '<tbody>'+body+'</tbody></table>';
-  }catch(e){ el.textContent="Log unavailable — "+(e.message||e); }
+    updateDtBanner(todayHasLoggedDT);
+  }catch(e){ el.textContent="Log unavailable — "+(e.message||e); updateDtBanner(false); }
 }
 
 // ── INIT ─────────────────────────────────────────────────────
@@ -559,6 +612,8 @@ buildManualCards();
 buildQual();
 loadData();
 restoreTfrType();
+try{ dtArmed = localStorage.getItem("sentinel_dtArmed")==="1"; }catch(e){}
+applyDtButtonStyle();
 renderLog();
 setInterval(loadData,5*60*1000);
 </script>
