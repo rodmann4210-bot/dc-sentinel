@@ -78,6 +78,16 @@
     .dt-banner{display:flex;align-items:center;gap:14px;padding:12px 18px;margin-bottom:16px;border-radius:8px;background:linear-gradient(180deg,#0c1826,#0a0f18);border:1px solid #2c5282;border-left:4px solid #4a7bab}
     .dt-banner-title{font-size:13px;font-weight:900;letter-spacing:0.18em;color:#dbeafe}
     .dt-banner-sub{font-size:10px;color:#7c96b3;font-family:monospace;margin-top:3px;letter-spacing:0.04em}
+    .honor-box{background:linear-gradient(180deg,#0b1420,#0a0f18);border:1px solid #2c5282;border-left:4px solid #4a7bab;border-radius:8px;padding:18px 20px;margin-bottom:16px}
+    .honor-title{font-size:13px;font-weight:900;letter-spacing:0.18em;color:#dbeafe}
+    .honor-sub{font-size:8px;color:#4a7bab;letter-spacing:0.25em}
+    .honor-event{border-top:1px solid #1e3a52;padding-top:12px;margin-top:14px}
+    .honor-event:first-of-type{border-top:none;padding-top:0;margin-top:14px}
+    .honor-date{font-size:11px;font-weight:700;color:#93b4d4;font-family:monospace;letter-spacing:0.08em}
+    .honor-meta{font-size:9px;color:#5f7d9c;font-family:monospace;margin-top:2px}
+    .honor-name{font-size:12px;color:#e8eef5;font-family:monospace;padding:5px 0 5px 14px;border-left:2px solid #2c5282;margin-top:7px;line-height:1.5}
+    .honor-name span{color:#7c96b3;font-size:10px}
+    .honor-foot{font-size:9px;color:#4a7bab;font-family:monospace;margin-top:16px;padding-top:12px;border-top:1px solid #1e3a52;letter-spacing:0.06em;text-align:center}
   </style>
   <script src="/sentinelScoring.js"></script>
 </head>
@@ -210,6 +220,20 @@
       </div>
     </div>
     <div id="logView" style="color:#475569;font-family:monospace;font-size:11px;overflow-x:auto">loading…</div>
+  </div>
+
+  <!-- HONOR ROLL · curated memorial list · never part of the anomaly math -->
+  <div class="section-label">── HONOR ROLL · dignified transfers observed · lest we forget</div>
+  <div class="honor-box">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:22px">🇺🇸</span>
+      <div>
+        <div class="honor-sub">IN MEMORIAM</div>
+        <div class="honor-title">HONOR ROLL</div>
+      </div>
+    </div>
+    <div id="honorRoll"></div>
+    <div class="honor-foot">— WE HONOR THEIR SERVICE AND THEIR SACRIFICE —</div>
   </div>
 
   <div class="footer">
@@ -603,6 +627,48 @@ async function renderLog(){
   }catch(e){ el.textContent="Log unavailable — "+(e.message||e); updateDtBanner(false); }
 }
 
+// ── HONOR ROLL (File 3) ─────────────────────────────────────
+// CURATED list. Names are added deliberately, never auto-scraped.
+// To add a transfer, copy an event block and fill it in. Newest first.
+var HONOR_ROLL = [
+  {
+    date: "July 22, 2026",
+    location: "Dover AFB, Delaware",
+    context: "Iran conflict",
+    fallen: [
+      { name: "1st Lt. Tyler James Feehan",   age: 25, home: "Ewa Beach, Hawaii" },
+      { name: "Pvt. Isabella Gonzales",       age: 19, home: "Carrollton, Texas" },
+      { name: "Sgt. Angel S. Rampersad",      age: 28, home: "Ozone Park, New York" },
+      { name: "Sgt. Michael Emmanuel Swinton",age: 30, home: "Spring Lake, North Carolina" }
+    ]
+  }
+];
+
+function renderHonorRoll(){
+  var el=document.getElementById("honorRoll");
+  if(!el) return;
+  if(!HONOR_ROLL.length){
+    el.innerHTML='<div style="font-size:11px;color:#4a7bab;font-family:monospace;margin-top:14px">No transfers recorded.</div>';
+    return;
+  }
+  el.innerHTML = HONOR_ROLL.map(function(ev){
+    var names = ev.fallen.map(function(p){
+      var detail=[];
+      if(p.age)  detail.push(p.age);
+      if(p.home) detail.push(p.home);
+      return '<div class="honor-name">'+p.name+
+             (detail.length?'<br><span>'+detail.join(" · ")+'</span>':'')+'</div>';
+    }).join("");
+    return '<div class="honor-event">'+
+             '<div class="honor-date">'+ev.date+'</div>'+
+             '<div class="honor-meta">'+(ev.location||"")+
+             (ev.context?' · '+ev.context:'')+' · '+ev.fallen.length+
+             (ev.fallen.length===1?' service member':' service members')+'</div>'+
+             names+
+           '</div>';
+  }).join("");
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 Object.keys(MANUAL_SIGNALS).forEach(function(id){
   var s=localStorage.getItem("sentinel_"+id);
@@ -614,6 +680,7 @@ loadData();
 restoreTfrType();
 try{ dtArmed = localStorage.getItem("sentinel_dtArmed")==="1"; }catch(e){}
 applyDtButtonStyle();
+renderHonorRoll();
 renderLog();
 setInterval(loadData,5*60*1000);
 </script>
