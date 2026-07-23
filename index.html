@@ -536,9 +536,10 @@ function restoreTfrType(){
   var el=document.getElementById("tfrType"); if(el) el.value=tfrType;
 }
 
-// ── DIGNIFIED TRANSFER honor channel (File 2) ───────────────
-// Pure honor marker: tags the saved pull's note, arms solemn styling +
-// the half-staff banner. Never touches scoring, coverage, or the σ math.
+// ── DIGNIFIED TRANSFER honor channel (File 2 / File 4c) ─────
+// Pure honor marker: writes the `dignified` CSV column, arms solemn
+// styling + the half-staff banner. Never touches scoring, coverage, or σ.
+// DT_TAG is retained ONLY to recognize rows saved before the schema change.
 var DT_TAG = "DIGNIFIED_TRANSFER";
 var dtArmed = false;
 
@@ -577,7 +578,8 @@ async function savePull(){
     tfrType: tfrType,
     hotel: Number(manualValues.hotel_rate)||0,
     car: Number(manualValues.car_rental)||0,
-    note: dtArmed ? DT_TAG : ""
+    note: "",
+    dignified: dtArmed ? 1 : 0
   };
   var row=SENTINEL.toLogRow(pull);
   var btn=document.getElementById("savePullBtn");
@@ -607,7 +609,11 @@ async function renderLog(){
     function fc(f){ return f==="CRITICAL"?"#f87171":f==="ELEVATED"?"#fb923c":f==="WATCH"?"#facc15":"#4ade80"; }
     var body=rows.map(function(line){
       var c=line.split(",");
-      var isDT=line.indexOf(DT_TAG)!==-1;
+      // `dignified` is the LAST column (1/0). Reading from the end is safe
+      // even if the quoted note contains commas. Rows saved before the
+      // schema change fall back to the legacy note tag so they keep their flag.
+      var lastCell=(c[c.length-1]||"").trim().replace(/"/g,"");
+      var isDT = lastCell==="1" || line.indexOf(DT_TAG)!==-1;
       if(isDT && (c[0]||"")===todayStr) todayHasLoggedDT=true;
       var rowStyle=isDT
         ? 'border-top:1px solid #1e293b;border-left:3px solid #4a7bab;background:#0c1420'

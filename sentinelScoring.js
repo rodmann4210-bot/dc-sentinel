@@ -64,6 +64,9 @@
   }
 
   // One CSV line matching sentinel_daily_log.csv column order; note is quoted.
+  // `dignified` is the LAST column (honor channel, 1 or 0). It is deliberately
+  // last so historical 15-column rows stay aligned — see api/log.js schema note.
+  // It carries no scoring weight; it never touches s.overall.
   function toLogRow(p) {
     var s = scorePull(p), x = s.parts;
     function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
@@ -71,7 +74,7 @@
       p.date, p.time, p.aircraft, p.mil, (p.tfrCount != null ? p.tfrCount : ""), p.tfrType,
       p.hotel, p.car,
       sig(x.aircraft.z), sig(x.mil.z), Math.round(x.tfr.intensity), sig(x.hotel.z), sig(x.car.z),
-      s.overall, q(p.note || "")
+      s.overall, q(p.note || ""), (p.dignified ? 1 : 0)
     ].join(",");
   }
 
@@ -104,6 +107,7 @@
               Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
+  S.nmBetween = nmBetween;
 
   // Classify a TFR as a Dover dignified-transfer ring.
   // Feed it whatever you can read off the pull: ring center lat/lon,
